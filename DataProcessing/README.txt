@@ -13,7 +13,7 @@ scRNA data on a sample-by-sample basis.
 3.) Run the 'Define_Matching.R' script to determine matching status and clone size for each T cell,
 using the filtered data objects (the outputs of Step 2).
 
-4.) Integrate the data (IntegrateMouseData.R and IntegrateHumanData.R) to
+4.) Integrate the data (IntegrateMouseData.R, IntegrateHumanData.R, and Merge_K409_LN_Tumor.R) to
 produce integrated Seurat/rds objects. 
 
 5.) The filtered objects can directly be used in the AUC_ROC_MarkerAnalyses directory.
@@ -23,12 +23,3 @@ the Seurat objects to csv files, and then run 'Convert_scanpy_csv.ipynb' to conv
 into Scanpy objects.
 
 7.) Run the Scanpy objects through the DataAnalysis directory and scripts. 
-
-10X_to_Filtered_rds.R
-Convert_scanpy_csv.ipynb
-Convert_seurat_csv.R
-Define_Matching.R
-GeneLists/
-IntegrateMouseData.R
-README.txt
-clone_pipeline.py
