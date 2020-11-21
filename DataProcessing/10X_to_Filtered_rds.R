@@ -194,7 +194,7 @@ see_if_keep_cluster_mouse <- function(so, cluster, idents){
 }
 
 
-# Emtpy identities
+# Empty identities
 idents <- c()
 
 # Keep certain clusters
