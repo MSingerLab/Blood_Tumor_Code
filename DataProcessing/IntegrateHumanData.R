@@ -10,9 +10,8 @@ library(ggplot2)
 library(dplyr)
 options(future.globals.maxSize = +Inf)
 
-dir_data <- "Data/"
-dir_data <- "~/Desktop/RawData/Blood_Tumor/ProcessedData/RDSobjects"
-dir_out <- "Outputs/"
+dir_data <- "../data/"
+dir_out <- "../outputs/"
 if (!dir.exists(dir_out)) {
   dir.create(dir_out, recursive = T)
   dir.create(paste0(dir_out, "Plots/"), recursive = F)
@@ -50,15 +49,13 @@ sample_names <- names(so_list_all)
 ## different data combinations
 ## blood_no_longitudinal: initial blood samples only; K409 blood, K411 blood, K468 blood, K484 blood
 ## tumor_ln_primary: all tumor samples, both LN met and primary; K409 LN met, K409 primary tumor; k311 LN met; K411 LN met; K468 axillary subcu. mass, K484 LN met
-to_integrate_vec <- c("blood_no_longitudinal", "tumor_ln_primary") 
+to_integrate_vec <- c("Blood", "Blood_wLongitudinal") 
 
 for (to_integrate in to_integrate_vec) {
-  if (to_integrate == "blood_no_longitudinal") {
+  if (to_integrate == "Blood") {
     so_list <- so_list_all[setdiff(grep("Blood", sample_names), grep("Longitudinal", sample_names))]
-  } else if (to_integrate == "tumor_ln_primary") {
-    source("merge_K409.R") ## merge two tumor samples for K409; comment out if already run this before
-    K409_merged <- readRDS(paste0(dir_out, "K409_merged.rds"))
-    so_list <- c(so_list_all[setdiff(grep("Tumor", sample_names), grep("K409", sample_names))], list(K409_tumor_ln = K409_merged))
+  } else if (to_integrate == "Blood_wLongitudinal") {
+    so_list <- so_list_all 
   }
   cat("\n\n\n===================  Integrating ", to_integrate, "  ===================\n")
   print(names(so_list))

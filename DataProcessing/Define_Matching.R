@@ -14,8 +14,8 @@
 
 # Load libraries
 library(hash)
-library(dplyr)
 library(plyr)
+library(dplyr)
 
 
 ############################################################
