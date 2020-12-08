@@ -1,12 +1,3 @@
-
-# Load libraries
-library(Seurat)
-
-# Load the function 'Keep_AB_Cells' which subsets the rds object
-# to keep only cells with at least one alpha and one beta chain
-source("Keep_AB_Cells.R")
-
-# Define some functions
 fill_in_structure <- function(gatenum, genes, gate_structures){
   v =  gate_structures[[gatenum]]
   pos = 1
@@ -204,19 +195,21 @@ preset_cutoffs <- function(genes, cutoffs, s){
 
 compute_combinations <- function(id, markers, sim, neg){
   
-  rds = Keep_AB_Cells(paste0('data/', id, '.rds'))
-  data = rds@meta.data
-  
-  # If using human data,
-  if (substr(id, 1, 1) == "K"){
-    counts = rds@assays$RNA@counts
+  if (substr(id, 1, 2)=="p3"){
+    sm = read.csv(paste(id, "blood_metadata.csv", sep="_"))
+    colnames(sm)[6] = "CX3CR1"
+  } else {
+    sm = metadata
+    smd = obj@assays$RNA@counts
+    #sm = read.csv(paste(id, "blood_metadata.csv", sep="_"))
+    #smd = read.table(paste(id, "blood_markers.txt", sep="_"))
     for (i in 1:length(markers)){
-      ind = which(as.character(rownames(counts))==gsub("_.*$", "", markers[i]))
-      data = data.frame(cbind(data, as.numeric(as.character(counts[ind,]))))
-      colnames(data)[ncol(data)] = markers[i]
+      ind = which(as.character(rownames(smd))==gsub("_.*$", "", markers[i]))
+      sm = data.frame(cbind(sm, as.numeric(as.character(smd[ind,]))))
+      colnames(sm)[ncol(sm)] = markers[i]
     }
   }
-  
+  data = sm
   
   res = data.frame(matrix(ncol=(num_gates*2), nrow=nrow(sim)))
   data_match = data[data$TM==1,]
@@ -237,15 +230,15 @@ compute_combinations <- function(id, markers, sim, neg){
       if (ng ==4) { options = four_options }
       for (k in 1:nrow(options)){
         gene_order = as.vector(options[k,])
-        workspace = matrix(nrow=nrow(data), ncol=ng)
+        workspace = matrix(nrow=nrow(sm), ncol=ng)
         for(q in 1:ng){
           g_code = which(colnames(sim)==gene_order[q])
-          col = which(colnames(data)==gene_order[q])
+          col = which(colnames(sm)==gene_order[q])
           cutoff = sim[r, g_code]
           if (neg[g_code]){
-            workspace[,q] = ifelse(data[,col] <= cutoff, 1, 0)
+            workspace[,q] = ifelse(sm[,col] <= cutoff, 1, 0)
           } else {
-            workspace[,q] = ifelse(data[,col] >= cutoff, 1, 0)
+            workspace[,q] = ifelse(sm[,col] >= cutoff, 1, 0)
           }
         }
         pass_gate = vector(mode="logical")
@@ -256,6 +249,7 @@ compute_combinations <- function(id, markers, sim, neg){
         res[r,(j*2)] = get_specificity(pass_gate, data)
         pps[j] = get_pass_popsize(pass_gate, data)
         j = j + 1
+        print(j/num_gates)
       }
     }
   }
@@ -286,13 +280,12 @@ compute_combinations <- function(id, markers, sim, neg){
   corners$pareto = rep("Pareto-optimal", 2)
   corners$num_genes = c(1,1)
   df = data.frame(rbind(df, corners))
-  po = df[df$pareto=="Pareto-optimal",]
   df$pareto = as.character(df$pareto)
   
   for (i in 1:nrow(df)){
     if(!is.na(df$gate[i])){
       if (df$gate[i] == "(CCR7 | GYPC) | (LTB | FLT3LG)") { df$pareto[i] = "sens" }
-      if (df$gate[i] == "((CCR7 & GYPC) & FLT3LG) | LTB") { df$pareto[i] = "balance" }
+      if (df$gate[i] == "(FLT3LG | LTB) & CCR7") { df$pareto[i] = "balance" }
       if (df$gate[i] == "(CCR7 & LTB) & (GYPC & FLT3LG)") { df$pareto[i] = "spec" }
     }
   }
@@ -302,35 +295,41 @@ compute_combinations <- function(id, markers, sim, neg){
   df$num_genes = as.factor(df$num_genes)
   df$pareto = factor(df$pareto, levels=c("not Pareto-optimal", "Pareto-optimal", "balance", "spec", "sens"))
   df = df[order(df$pareto),]
+  df$lbl = ""
+  df$lbl[df$gate=="LTB"] = "LTB"
+  df$lbl[df$gate=="FLT3LG"] = "FLT3LG"
+  df$lbl[df$gate=="GYPC"] = "GYPC"
+  df$lbl[df$gate=="CCR7"] = "CCR7"
+  po = df[df$pareto=="Pareto-optimal",]
+  po = df[df$pareto=="Pareto-optimal",]
   
-  pdf(paste0('outputs/', paste(id, paste(markers, collapse='_'), sep="_"), "_pareto_plot.pdf"), height=6, width=6)
+  pdf(paste(paste(id, paste(markers, collapse=''), sep="_"), "pareto_plot_1127_matchedcolors_wlabels.pdf", sep="_"), height=6, width=6)
   g = ggplot()
-  g = g + geom_line(aes(po$x, po$y), linetype="dashed", color="deepskyblue3")
-  g = g + geom_point(aes(df$x, df$y, color=df$pareto, shape=df$num_genes, size=df$pareto), show.legend = FALSE) + theme_bw()  + scale_color_manual(values = c("dimgray", "deepskyblue3", "darkslateblue", "darkmagenta", "darkgreen")) + scale_shape_manual(values=c(16,15,17,18)) + scale_size_manual(values=c(2, 2, 6, 6, 6))
+  g = g + geom_line(aes(po$x, po$y), linetype="dashed", color="black")
+  g = g + geom_point(aes(df$x, df$y, color=df$pareto, shape=df$num_genes, size=df$pareto), show.legend = FALSE) + theme_bw(base_size=15) + scale_color_manual(values = c("dimgray", "black", "#645b9d", "#a7396f", "#99543c")) + scale_shape_manual(values=c(16,15,17,18)) + scale_size_manual(values=c(2, 2, 6, 6, 6))
   g = g + xlab("1 - Specificity") + ylab("Sensitivity") + scale_x_continuous(limits=c(0,1), breaks = seq(0, 1, .2)) + scale_y_continuous(limits = c(0,1), breaks = seq(0, 1, .2)) ##+ xlim(c(0,1)) + ylim(c(0,1))
-  g = g + geom_abline(slope=1, intercept = 0, size=0.25) 
+  g = g + geom_abline(slope=1, intercept = 0, size=0.25) + geom_text_repel(aes(df$x, df$y, label=df$lbl, color=df$pareto), size=6, show.legend = FALSE)
   print(g)
   dev.off()
   
-  write.csv(df, paste0('outputs/', id, "_combinatorial_sens_spec.csv"))
+  #write.csv(df, paste(id, "combinatorial_sens_spec_1127.csv", sep="_"))
 }
 
 set_up_cutoffs <- function(markers, samples){
   cutoffs = data.frame()
-  if (all(samples == c("M4_Blood", "M5_Blood"))){
+  if (substr(samples[1], 1, 2)=="p3"){
+    markers_temp = c("NKG2D", "CXCR1", "CD39")
     for (i in 1:length(markers)){
       for (j in 1:length(samples)){
-        comet_data = read.csv(paste0('data/', samples[j], "_singletons_full.csv"))
-        ind = which(comet_data$gene_1 == markers[i])
+        comet_data = read.csv(paste(samples[j], "singletons_full.csv", sep="_"))
+        ind = which(comet_data$gene_1 == markers_temp[i])
         cutoffs[j,i] = max(0.001, comet_data$cutoff_val[ind])
       }
     }
   } else {
     for (i in 1:length(markers)){
       for (j in 1:length(samples)){
-        comet_data = read.csv(paste0('data/', samples[length(samples)], "_singletons_HS_full.csv"))
-        ind = which(comet_data$gene_1 == markers[i])
-        cutoffs[j,i] = max(0.001, comet_data$cutoff_val[ind])
+        cutoffs[j,i] = 0.001
       }
     }
   }
@@ -342,7 +341,7 @@ library(DescTools)
 library(ggplot2)
 library(ggrepel)
 
-markers = c("NKG2D_TotalSeqC", "CX3CR1_TotalSeqC", "CD39_TotalSeqC")
+markers = c("NKG2D", "CX3CR1", "CD39")
 neg = rep(FALSE, 3)
 gate_info = set_up_gates(markers)
 gates <- gate_info[[1]]
@@ -359,7 +358,7 @@ if (length(markers)==4){
   four_options <- gate_info[[11]]
 }
 
-samples = c("M4_Blood", "M5_Blood")
+samples = c("p3m1", "p3m2")
 cutoffs = set_up_cutoffs(markers, samples)
 
 for (s in 1:length(samples)){
@@ -372,6 +371,7 @@ for (s in 1:length(samples)){
 rm(list = setdiff(ls(), lsf.str()))
 
 markers = c("LTB_negation", "CCR7_negation", "GYPC_negation", "FLT3LG_negation")
+
 neg = c(TRUE, TRUE, TRUE, TRUE)
 gate_info = set_up_gates(markers)
 gates <- gate_info[[1]]
@@ -388,12 +388,43 @@ if (length(markers)==4){
   four_options <- gate_info[[11]]
 }
 
-samples = c('K409_Blood', 'K411_Blood', 'K411_Blood_Longitudinal', 'K468_Blood', 'K468_Blood_Longitudinal', 'K484_Blood')
+#samples = c("k409c1", "k411Ac1", "k411Bc1", "k468Ac1")##, "k468Bc1")
+samples = c("k484c1_1124")
 cutoffs = set_up_cutoffs(markers, samples)
-
+#setwd("tumorblood_input")
 for (s in 1:length(samples)){
   id = samples[s]
   sim = preset_cutoffs(markers, cutoffs, s)
   colnames(sim) = markers
   compute_combinations(id, markers, sim, neg)
 }
+
+df = read.csv("k468B_combination_data_1127.csv")
+df$num_genes = as.numeric(as.character(df$num_genes))
+df = df[order(df$num_genes),]
+df$num_genes = as.factor(df$num_genes)
+df$pareto = factor(df$pareto, levels=c("not Pareto-optimal", "Pareto-optimal", "balance", "spec", "sens"))
+df = df[order(df$pareto),]
+corners = data.frame(matrix(nrow=2, ncol=ncol(df)))
+colnames(corners) = colnames(df)
+corners$x = c(0, 1)
+corners$y = c(0, 1)
+corners$pareto = rep("Pareto-optimal", 2)
+corners$num_genes = c(1,1)
+df = data.frame(rbind(df, corners))
+df$lbl = ""
+df$lbl[df$gate=="LTB_negation"] = "LTB"
+df$lbl[df$gate=="FLT3LG_negation"] = "FLT3LG"
+df$lbl[df$gate=="GYPC_negation"] = "GYPC"
+df$lbl[df$gate=="CCR7_negation"] = "CCR7"
+po = df[df$pareto=="Pareto-optimal",]
+po = df[df$pareto=="Pareto-optimal",]
+
+pdf("Fig6G_K468B_pareto_plot_1127_matchedcolors_wlabels.pdf", height=6, width=6)
+g = ggplot()
+g = g + geom_line(aes(po$x, po$y), linetype="dashed", color="black") 
+g = g + geom_point(aes(df$x, df$y, color=df$pareto, shape=df$num_genes, size=df$pareto), show.legend = FALSE) + theme_bw(base_size=15)  + scale_color_manual(values = c("dimgray", "black", "#645b9d", "#a7396f", "#99543c")) + scale_shape_manual(values=c(16,15,17,18)) + scale_size_manual(values=c(2, 2, 6, 6, 6))
+g = g + xlab("1 - Specificity") + ylab("Sensitivity") + scale_x_continuous(limits=c(0,1), breaks = seq(0, 1, .2)) + scale_y_continuous(limits = c(0,1), breaks = seq(0, 1, .2)) ##+ xlim(c(0,1)) + ylim(c(0,1))
+g = g + geom_abline(slope=1, intercept = 0, size=0.25) + geom_text_repel(aes(df$x, df$y, label=df$lbl, color=df$pareto), size=6, show.legend = FALSE)
+print(g)
+dev.off()
