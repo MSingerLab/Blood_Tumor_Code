@@ -1,4 +1,4 @@
-This directory has three subdirectories:
+This directory has four subdirectories:
 
 - DataProcessing
 Used for converting 10X output (filtered_feature_bc_matrix) to finished Seurat/Scanpy objects for analysis.
