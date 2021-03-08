@@ -4,6 +4,9 @@ Blood_Tumor_Code is the GitHub repository that holds the code for the paper publ
 Find the paper here!
 https://doi.org/10.1084/jem.20200920
 
+The published datasets can be found at the following GEO repository:
+https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE41870
+
 This directory has four subdirectories:
 
 - DataProcessing
