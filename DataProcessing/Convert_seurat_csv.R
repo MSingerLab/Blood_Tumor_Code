@@ -82,7 +82,7 @@ csv_to_seurat <- function(mtx_path, meta_path, transpose = FALSE,
   
   # Save rds object, if specified
   if(!is.null(save_name)){
-    saveRDS(rds)
+    saveRDS(rds, save_name)
   }
   
   # Return rds object
